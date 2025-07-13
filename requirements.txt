@@ -1,3 +1,7 @@
+jax>=0.6.2
+jaxlib>=0.6.2
+orbax-checkpoint @ git+https://github.com/google/orbax.git@test_782430938#subdirectory=checkpoint
+cloudpickle==3.0.0
 absl-py
 aqtp
 array-record
@@ -12,17 +16,14 @@ google-cloud-monitoring
 google-jetstream@git+https://github.com/AI-Hypercomputer/JetStream.git
 grain[parquet]>=0.2.6
 huggingface_hub
-jax>=0.4.30
-jaxlib>=0.4.30
 jaxtyping
 jsonlines
 ml-collections
 ml-goodput-measurement
 mlperf-logging@git+https://github.com/mlperf/logging.git
-numpy
+numpy==2.1.1
 omegaconf
 optax
-orbax-checkpoint>=0.10.3
 pathwaysutils>=0.1.1
 pillow>=11.1.0
 pre-commit
