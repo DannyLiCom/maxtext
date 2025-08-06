@@ -30,7 +30,7 @@ from MaxText.globals import DEFAULT_OCDBT_TARGET_DATA_FILE_SIZE
 from MaxText.multihost_dataloading import MultiHostDataLoadIterator
 import numpy as np
 import orbax.checkpoint as ocp
-from orbax.checkpoint import v1 as ocp_v1
+# from orbax.checkpoint import v1 as ocp_v1
 import orbax.checkpoint.experimental.emergency.checkpoint_manager as emergency_checkpoint_manager
 import orbax.checkpoint.experimental.emergency.replicator_checkpoint_manager as emergency_replicator_checkpoint_manager
 # pylint: disable=too-many-positional-arguments
@@ -68,33 +68,33 @@ def _load_full_state_from_path(
     The loaded state.
   """
 
-  if enable_orbax_v1:
-    if source_checkpoint_layout == "orbax":
-      context = ocp_v1.Context(
-          checkpoint_layout=ocp_v1.options.CheckpointLayout.ORBAX
-          )
-    elif source_checkpoint_layout == "safetensors":
-      context = ocp_v1.Context(
-          checkpoint_layout=ocp_v1.options.CheckpointLayout.SAFETENSORS
-          )
-    else:
-      raise ocp_v1.errors.InvalidLayoutError(
-          f"Unknown checkpoint layout: {source_checkpoint_layout}"
-          )
-    if ocp_v1.is_orbax_checkpoint(path):
-      state = ocp_v1.load_pytree(path, abstract_unboxed_pre_state)
-    else:
-      with context:
-        pre_transformed_state = ocp_v1.load_pytree(path)
-      state = checkpoint_conversion_fn(pre_transformed_state)
-      # TODO(zachmeyers): Add call to place on devices, after sharding logic
-      # is implemented on Orbax side.
-    return state
-  else:
-    # This is the original v0 logic that should be restored. For the edge case
-    # where a CheckpointManager is present but empty.
-    p = epath.Path(path)
-    return ocp.StandardCheckpointer().restore(p, abstract_unboxed_pre_state)
+  # if enable_orbax_v1:
+  #   if source_checkpoint_layout == "orbax":
+  #     context = ocp_v1.Context(
+  #         checkpoint_layout=ocp_v1.options.CheckpointLayout.ORBAX
+  #         )
+  #   elif source_checkpoint_layout == "safetensors":
+  #     context = ocp_v1.Context(
+  #         checkpoint_layout=ocp_v1.options.CheckpointLayout.SAFETENSORS
+  #         )
+  #   else:
+  #     raise ocp_v1.errors.InvalidLayoutError(
+  #         f"Unknown checkpoint layout: {source_checkpoint_layout}"
+  #         )
+  #   if ocp_v1.is_orbax_checkpoint(path):
+  #     state = ocp_v1.load_pytree(path, abstract_unboxed_pre_state)
+  #   else:
+  #     with context:
+  #       pre_transformed_state = ocp_v1.load_pytree(path)
+  #     state = checkpoint_conversion_fn(pre_transformed_state)
+  #     # TODO(zachmeyers): Add call to place on devices, after sharding logic
+  #     # is implemented on Orbax side.
+  #   return state
+  # else:
+  #   # This is the original v0 logic that should be restored. For the edge case
+  #   # where a CheckpointManager is present but empty.
+  p = epath.Path(path)
+  return ocp.StandardCheckpointer().restore(p, abstract_unboxed_pre_state)
 
 
 def create_orbax_checkpoint_manager(
@@ -359,7 +359,7 @@ def load_state_if_possible(
         case (checkpoint_manager, _, _) if isinstance(
             checkpoint_manager, (EmergencyCheckpointManager, EmergencyReplicatorCheckpointManager)
         ):
-          return (checkpoint_manager.restore(step, args=Composite(state=checkpoint_args)).state, None)
+          return (checkpoint_manager.restore(step, args=checkpoint_args), None)
         # Case 2: Matches if dataset type is "grain" and a specific checkpoint file exits for the iterator
         # exists within the checkpoint manager's directory for the given step.
         case (checkpoint_manager, dataset_type, data_iterator) if dataset_type == "grain" and data_iterator and (
