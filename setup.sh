@@ -31,18 +31,20 @@ export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_SUSPEND=1
 export NEEDRESTART_MODE=l
 
-apt-get update && apt-get install -y sudo
-(sudo bash || bash) <<'EOF'
-apt update && \
-apt install -y numactl lsb-release gnupg curl net-tools iproute2 procps lsof git ethtool && \
-export GCSFUSE_REPO=gcsfuse-`lsb_release -c -s`
-echo "deb https://packages.cloud.google.com/apt $GCSFUSE_REPO main" | tee /etc/apt/sources.list.d/gcsfuse.list
-curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
-apt update -y && apt -y install gcsfuse
-rm -rf /var/lib/apt/lists/*
-EOF
+## Install system dependencies once
+# apt-get update && apt-get install -y sudo
+# (sudo bash || bash) <<'EOF'
+# apt update && \
+# apt install -y numactl lsb-release gnupg curl net-tools iproute2 procps lsof git ethtool
+# export GCSFUSE_REPO=gcsfuse-`lsb_release -c -s`
+# echo "deb https://packages.cloud.google.com/apt $GCSFUSE_REPO main" | tee /etc/apt/sources.list.d/gcsfuse.list
+# curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
+# apt update -y && apt -y install gcsfuse
+# rm -rf /var/lib/apt/lists/*
+# EOF
 
-python3 -m pip install -U setuptools wheel
+# We need to pin specific versions of setuptools, see b/402501203 for more.
+python3 -m pip install setuptools==65.5.0 wheel==0.45.1
 
 # Set environment variables
 for ARGUMENT in "$@"; do
@@ -154,11 +156,7 @@ elif [[ "$MODE" == "stable" || ! -v MODE ]]; then
             python3 -m pip install "jax[cuda12]"
         fi
         export NVTE_FRAMEWORK=jax
-        if [[ -n "$JAX_VERSION" && "$JAX_VERSION" != "0.7.0" ]]; then
-            python3 -m pip install transformer-engine[jax]
-        else
-            python3 -m pip install git+https://github.com/NVIDIA/TransformerEngine.git@9d031f
-        fi
+        python3 -m pip install git+https://github.com/NVIDIA/TransformerEngine.git@stable
     fi
 elif [[ $MODE == "nightly" ]]; then
 # Nightly mode
@@ -173,7 +171,7 @@ elif [[ $MODE == "nightly" ]]; then
         fi
         # Install Transformer Engine
         export NVTE_FRAMEWORK=jax
-        python3 -m pip install https://github.com/NVIDIA/TransformerEngine/archive/9d031f.zip
+        python3 -m pip install git+https://github.com/NVIDIA/TransformerEngine.git@stable
     elif [[ $DEVICE == "tpu" ]]; then
         echo "Installing jax-nightly, jaxlib-nightly"
         # Install jax-nightly
@@ -202,3 +200,7 @@ else
     echo -e "\n\nError: You can only set MODE to [stable,nightly,libtpu-only].\n\n"
     exit 1
 fi
+
+yes | pip3 uninstall orbax-checkpoint
+pip install git+https://github.com/samos123/orbax.git@v0.12.0#subdirectory=checkpoint
+pip install qwix
