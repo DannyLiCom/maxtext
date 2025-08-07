@@ -31,16 +31,16 @@ export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_SUSPEND=1
 export NEEDRESTART_MODE=l
 
-apt-get update && apt-get install -y sudo
-(sudo bash || bash) <<'EOF'
-apt update && \
-apt install -y numactl lsb-release gnupg curl net-tools iproute2 procps lsof git ethtool && \
-export GCSFUSE_REPO=gcsfuse-`lsb_release -c -s`
-echo "deb https://packages.cloud.google.com/apt $GCSFUSE_REPO main" | tee /etc/apt/sources.list.d/gcsfuse.list
-curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
-apt update -y && apt -y install gcsfuse
-rm -rf /var/lib/apt/lists/*
-EOF
+# apt-get update && apt-get install -y sudo
+# (sudo bash || bash) <<'EOF'
+# apt update && \
+# apt install -y numactl lsb-release gnupg curl net-tools iproute2 procps lsof git ethtool && \
+# export GCSFUSE_REPO=gcsfuse-`lsb_release -c -s`
+# echo "deb https://packages.cloud.google.com/apt $GCSFUSE_REPO main" | tee /etc/apt/sources.list.d/gcsfuse.list
+# curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
+# apt update -y && apt -y install gcsfuse
+# rm -rf /var/lib/apt/lists/*
+# EOF
 
 # We need to pin specific versions of setuptools, see b/402501203 for more.
 python3 -m pip install setuptools==65.5.0 wheel==0.45.1
