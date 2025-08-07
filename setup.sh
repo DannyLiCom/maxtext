@@ -199,3 +199,6 @@ else
     echo -e "\n\nError: You can only set MODE to [stable,nightly,libtpu-only].\n\n"
     exit 1
 fi
+
+yes | pip3 uninstall orbax-checkpoint
+pip install git+https://github.com/samos123/orbax.git@v0.12.0#subdirectory=checkpoint
