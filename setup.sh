@@ -202,5 +202,5 @@ else
 fi
 
 yes | pip3 uninstall orbax-checkpoint
-pip install git+https://github.com/samos123/orbax.git@v0.12.0#subdirectory=checkpoint
+pip install git+https://github.com/google/orbax.git@v0.11.21#subdirectory=checkpoint
 pip install qwix
