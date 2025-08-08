@@ -60,5 +60,5 @@ RUN if [ "$TEST_TYPE" = "xlml" ] || [ "$TEST_TYPE" = "unit_test" ]; then \
 RUN bash /jax-stable-stack/generate_manifest.sh PREFIX=maxtext COMMIT_HASH=$COMMIT_HASH
 
 RUN yes | pip3 uninstall orbax-checkpoint
-RUN pip install git+https://github.com/samos123/orbax.git@v0.12.0#subdirectory=checkpoint
+RUN pip install git+https://github.com/google/orbax.git@v0.11.21#subdirectory=checkpoint
 

@@ -100,7 +100,8 @@ def create_orbax_emergency_checkpoint_manager(
     orbax_logger: Any = None,  # pytype: disable=attribute-error
 ):
   """Returns an emergency checkpoint manager."""
-  flags.FLAGS.experimental_orbax_use_distributed_process_id = True
+  flags.FLAGS.experimental_orbax_use_distributed_process_id = False
+  max_logging.log(f"experimental_orbax_use_distributed_process_id in EMC set to: {flags.FLAGS.experimental_orbax_use_distributed_process_id}")
   max_logging.log("Creating emergency checkpoint manager...")
 
   # Only create directories if running on GPUs as the previous

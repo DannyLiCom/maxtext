@@ -45,7 +45,7 @@ RUN echo "Running command: bash setup.sh MODE=$ENV_MODE JAX_VERSION=$ENV_JAX_VER
 RUN --mount=type=cache,target=/root/.cache/pip bash setup.sh MODE=${ENV_MODE} JAX_VERSION=${ENV_JAX_VERSION} LIBTPU_GCS_PATH=${ENV_LIBTPU_GCS_PATH} DEVICE=${ENV_DEVICE}
 
 RUN yes | pip3 uninstall orbax-checkpoint
-RUN pip install git+https://github.com/samos123/orbax.git@v0.12.0#subdirectory=checkpoint
+RUN pip install git+https://github.com/google/orbax.git@v0.11.21#subdirectory=checkpoint
 
 # Now copy the remaining code (source files that may change frequently)
 COPY . .
