@@ -30,7 +30,7 @@ from MaxText.globals import DEFAULT_OCDBT_TARGET_DATA_FILE_SIZE
 from MaxText.multihost_dataloading import MultiHostDataLoadIterator
 import numpy as np
 import orbax.checkpoint as ocp
-# from orbax.checkpoint import v1 as ocp_v1
+from orbax.checkpoint import v1 as ocp_v1
 import orbax.checkpoint.experimental.emergency.checkpoint_manager as emergency_checkpoint_manager
 import orbax.checkpoint.experimental.emergency.replicator_checkpoint_manager as emergency_replicator_checkpoint_manager
 # pylint: disable=too-many-positional-arguments
@@ -68,33 +68,33 @@ def _load_full_state_from_path(
     The loaded state.
   """
 
-  # if enable_orbax_v1:
-  #   if source_checkpoint_layout == "orbax":
-  #     context = ocp_v1.Context(
-  #         checkpoint_layout=ocp_v1.options.CheckpointLayout.ORBAX
-  #         )
-  #   elif source_checkpoint_layout == "safetensors":
-  #     context = ocp_v1.Context(
-  #         checkpoint_layout=ocp_v1.options.CheckpointLayout.SAFETENSORS
-  #         )
-  #   else:
-  #     raise ocp_v1.errors.InvalidLayoutError(
-  #         f"Unknown checkpoint layout: {source_checkpoint_layout}"
-  #         )
-  #   if ocp_v1.is_orbax_checkpoint(path):
-  #     state = ocp_v1.load_pytree(path, abstract_unboxed_pre_state)
-  #   else:
-  #     with context:
-  #       pre_transformed_state = ocp_v1.load_pytree(path)
-  #     state = checkpoint_conversion_fn(pre_transformed_state)
-  #     # TODO(zachmeyers): Add call to place on devices, after sharding logic
-  #     # is implemented on Orbax side.
-  #   return state
-  # else:
-  #   # This is the original v0 logic that should be restored. For the edge case
-  #   # where a CheckpointManager is present but empty.
-  p = epath.Path(path)
-  return ocp.StandardCheckpointer().restore(p, abstract_unboxed_pre_state)
+  if enable_orbax_v1:
+    if source_checkpoint_layout == "orbax":
+      context = ocp_v1.Context(
+          checkpoint_layout=ocp_v1.options.CheckpointLayout.ORBAX
+          )
+    elif source_checkpoint_layout == "safetensors":
+      context = ocp_v1.Context(
+          checkpoint_layout=ocp_v1.options.CheckpointLayout.SAFETENSORS
+          )
+    else:
+      raise ocp_v1.errors.InvalidLayoutError(
+          f"Unknown checkpoint layout: {source_checkpoint_layout}"
+          )
+    if ocp_v1.is_orbax_checkpoint(path):
+      state = ocp_v1.load_pytree(path, abstract_unboxed_pre_state)
+    else:
+      with context:
+        pre_transformed_state = ocp_v1.load_pytree(path)
+      state = checkpoint_conversion_fn(pre_transformed_state)
+      # TODO(zachmeyers): Add call to place on devices, after sharding logic
+      # is implemented on Orbax side.
+    return state
+  else:
+    # This is the original v0 logic that should be restored. For the edge case
+    # where a CheckpointManager is present but empty.
+    p = epath.Path(path)
+    return ocp.StandardCheckpointer().restore(p, abstract_unboxed_pre_state)
 
 
 def create_orbax_checkpoint_manager(
@@ -152,18 +152,23 @@ def create_orbax_emergency_checkpoint_manager(
 ):
   """Returns an emergency checkpoint manager."""
   flags.FLAGS.experimental_orbax_use_distributed_process_id = True
+  # flags.FLAGS.experimental_use_distributed_id_for_mesh_consistency = False
+  max_logging.log(f"experimental_orbax_use_distributed_process_id = {flags.FLAGS.experimental_orbax_use_distributed_process_id}")
+  max_logging.log(f"experimental_use_distributed_id_for_mesh_consistency = {flags.FLAGS.experimental_use_distributed_id_for_mesh_consistency}")
   max_logging.log("Creating emergency checkpoint manager...")
 
+  persistent_p = epath.Path(persistent_checkpoint_dir)
+  persistent_p.mkdir(exist_ok=True, parents=True)
   # Only create directories if running on GPUs as the previous
   # directory structure might be assumed by TPUs
   if global_mesh.devices.flatten()[0].platform == "gpu":
     # pylint: disable=protected-access
     local_checkpoint_dir = f"{local_checkpoint_dir}/{jax._src.distributed.global_state.process_id}"
     local_p = epath.Path(local_checkpoint_dir)
-    persistent_p = epath.Path(persistent_checkpoint_dir)
+    # persistent_p = epath.Path(persistent_checkpoint_dir)
     local_p.mkdir(exist_ok=True, parents=True)
-    persistent_p.mkdir(exist_ok=True, parents=True)
-
+    # persistent_p.mkdir(exist_ok=True, parents=True)
+  
   manager = EmergencyCheckpointManager(
       local_checkpoint_dir,
       epath.Path(persistent_checkpoint_dir),
@@ -359,7 +364,7 @@ def load_state_if_possible(
         case (checkpoint_manager, _, _) if isinstance(
             checkpoint_manager, (EmergencyCheckpointManager, EmergencyReplicatorCheckpointManager)
         ):
-          return (checkpoint_manager.restore(step, args=checkpoint_args), None)
+          return (checkpoint_manager.restore(step, args=Composite(state=checkpoint_args)), None)
         # Case 2: Matches if dataset type is "grain" and a specific checkpoint file exits for the iterator
         # exists within the checkpoint manager's directory for the given step.
         case (checkpoint_manager, dataset_type, data_iterator) if dataset_type == "grain" and data_iterator and (
