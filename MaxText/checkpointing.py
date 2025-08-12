@@ -159,6 +159,7 @@ def create_orbax_emergency_checkpoint_manager(
 
   persistent_p = epath.Path(persistent_checkpoint_dir)
   persistent_p.mkdir(exist_ok=True, parents=True)
+  ocp.test_utils.print_directory(local_checkpoint_dir)
   # Only create directories if running on GPUs as the previous
   # directory structure might be assumed by TPUs
   if global_mesh.devices.flatten()[0].platform == "gpu":
@@ -364,7 +365,7 @@ def load_state_if_possible(
         case (checkpoint_manager, _, _) if isinstance(
             checkpoint_manager, (EmergencyCheckpointManager, EmergencyReplicatorCheckpointManager)
         ):
-          return (checkpoint_manager.restore(step, args=Composite(state=checkpoint_args)), None)
+          return (checkpoint_manager.restore(step, args=Composite(state=checkpoint_args)).state, None)
         # Case 2: Matches if dataset type is "grain" and a specific checkpoint file exits for the iterator
         # exists within the checkpoint manager's directory for the given step.
         case (checkpoint_manager, dataset_type, data_iterator) if dataset_type == "grain" and data_iterator and (
