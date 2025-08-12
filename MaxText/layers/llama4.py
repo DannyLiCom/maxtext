@@ -360,6 +360,7 @@ class Llama4DecoderLayer(nn.Module):
 
   config: Config
   mesh: Mesh
+  model_mode: str
   quant: Optional[Quant] = None
   is_nope_layer: bool = False
   is_moe_layer: bool = False
@@ -408,8 +409,8 @@ class Llama4DecoderLayer(nn.Module):
         max_target_length=cfg.max_target_length,
         max_prefill_predict_length=cfg.max_prefill_predict_length,
         attention_kernel=cfg.attention,
-        inputs_q=lnx,
-        inputs_kv=lnx,
+        inputs_q_shape=lnx.shape,
+        inputs_kv_shape=lnx.shape,
         mesh=mesh,
         dtype=cfg.dtype,
         weight_dtype=cfg.weight_dtype,
@@ -454,25 +455,24 @@ class Llama4DecoderLayer(nn.Module):
     )
     intermediate_inputs = inputs + attention_lnx
 
-    # Fully Connected
-    hidden_states = rms_norm(
+    load_balance_loss = None
+    if self.is_moe_layer:
+      # Fully Connected
+      hidden_states = rms_norm(
         num_features=intermediate_inputs.shape[-1],
         dtype=cfg.dtype,
         weight_dtype=cfg.weight_dtype,
         name="post_self_attention_layer_norm",
         kernel_axes=("norm",),
         epsilon=cfg.normalization_layer_epsilon,
-    )(intermediate_inputs)
-    hidden_states = nn.with_logical_constraint(
-        hidden_states, ("activation_batch", "activation_norm_length", "activation_embed")
-    )
-
-    load_balance_loss = None
-    if self.is_moe_layer:
+      )(intermediate_inputs)
+      hidden_states = nn.with_logical_constraint(
+          hidden_states, ("activation_batch", "activation_norm_length", "activation_embed")
+      )
       # NOTE: the naming mismatch here is to ensure reverse compatibility with existing checkpoints.
       # The `name` represents the weight name in JAX/checkpoints and so the class name
       # is just for readability.
-      mlp_lnx = moe.RoutedAndSharedMoE(
+      mlp_lnx = moe.get_routed_and_shared_moe(
           name="Llama4MoEBlock_0",
           config=cfg,
           mesh=self.mesh,
@@ -483,8 +483,9 @@ class Llama4DecoderLayer(nn.Module):
           quant=self.quant,
       )(hidden_states)
     else:
+      # MLP block with pre-norm.
       mlp_lnx = mlp_block(
-          in_features=hidden_states.shape[-1],
+          in_features=intermediate_inputs.shape[-1],
           intermediate_dim=cfg.mlp_dim,
           activations=cfg.mlp_activations,
           intermediate_dropout_rate=cfg.dropout_rate,
@@ -493,7 +494,8 @@ class Llama4DecoderLayer(nn.Module):
           name="mlp",
           config=cfg,
           quant=self.quant,
-      )(hidden_states, deterministic=deterministic)
+          use_pre_norm=True,
+      )(intermediate_inputs, deterministic=deterministic)
     mlp_lnx = nn.with_logical_constraint(mlp_lnx, ("activation_batch", "activation_norm_length", "activation_embed"))
 
     layer_output = mlp_lnx + intermediate_inputs
@@ -539,6 +541,7 @@ class Llama4ScannableBlock(nn.Module):
 
   config: Config
   mesh: Mesh
+  model_mode: str
   quant: Optional[Quant] = None
   nope_layer_interval: int = 1
   interleave_moe_layer_step: int = 1
@@ -571,6 +574,7 @@ class Llama4ScannableBlock(nn.Module):
           mesh=mesh,
           name=f"layers_{layer_id}",
           quant=self.quant,
+          model_mode=model_mode,
           is_nope_layer=nope_layer,
           is_moe_layer=moe_layer,
       )
@@ -628,8 +632,8 @@ class Llama4VisionEncoderLayer(nn.Module):
         head_dim=self.config.hidden_size_for_vit // self.config.num_attention_heads_for_vit,
         max_target_length=(self.config.image_size_for_vit // self.config.patch_size_for_vit) ** 2 + 1,
         attention_kernel="dot_product",
-        inputs_q=hidden_states,
-        inputs_kv=hidden_states,
+        inputs_q_shape=hidden_states.shape,
+        inputs_kv_shape=hidden_states.shape,
         float32_qk_product=self.config.float32_qk_product,
         float32_logits=self.config.float32_logits,
         mesh=self.mesh,

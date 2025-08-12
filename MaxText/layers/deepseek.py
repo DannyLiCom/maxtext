@@ -82,8 +82,8 @@ def self_attention_with_norm(
       max_target_length=cfg.max_target_length,
       max_prefill_predict_length=cfg.max_prefill_predict_length,
       attention_kernel=cfg.attention,
-      inputs_q=lnx,
-      inputs_kv=lnx,
+      inputs_q_shape=lnx.shape,
+      inputs_kv_shape=lnx.shape,
       mesh=mesh,
       dtype=cfg.dtype,
       weight_dtype=cfg.weight_dtype,
@@ -153,6 +153,7 @@ class DeepSeekDenseLayer(nn.Module):
 
   config: Config
   mesh: Mesh
+  model_mode: str
   quant: Optional[Quant] = None
 
   @nn.compact
@@ -218,6 +219,7 @@ class DeepSeekMoELayer(nn.Module):
 
   config: Config
   mesh: Mesh
+  model_mode: str
   quant: Optional[Quant] = None
 
   @nn.compact
@@ -257,7 +259,7 @@ class DeepSeekMoELayer(nn.Module):
     # NOTE: the naming mismatch here is to ensure reverse compatibility with existing checkpoints.
     # The `name` represents the weight name in JAX/checkpoints and so the class name
     # is just for readability.
-    mlp_lnx = moe.RoutedAndSharedMoE(
+    mlp_lnx = moe.get_routed_and_shared_moe(
         name="DeepSeekMoeBlock_0",
         config=cfg,
         mesh=self.mesh,

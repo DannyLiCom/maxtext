@@ -63,6 +63,7 @@ class Gemma3DecoderLayer(nn.Module):
 
   config: Config
   mesh: Mesh
+  model_mode: str
   quant: Optional[Quant] = None
   attention_type: AttentionType = AttentionType.LOCAL_SLIDING
 
@@ -103,8 +104,8 @@ class Gemma3DecoderLayer(nn.Module):
         max_target_length=cfg.max_target_length,
         max_prefill_predict_length=cfg.max_prefill_predict_length,
         attention_kernel=cfg.attention,
-        inputs_q=lnx,
-        inputs_kv=lnx,
+        inputs_q_shape=lnx.shape,
+        inputs_kv_shape=lnx.shape,
         mesh=mesh,
         dtype=cfg.dtype,
         weight_dtype=cfg.weight_dtype,
@@ -146,17 +147,9 @@ class Gemma3DecoderLayer(nn.Module):
     attention_lnx += inputs
     residual = attention_lnx
 
-    attn_output = rms_norm(
-        num_features=attention_lnx.shape[-1],
-        dtype=cfg.dtype,
-        weight_dtype=cfg.weight_dtype,
-        name="pre_ffw_norm",
-        kernel_axes=("norm",),
-    )(attention_lnx)
-
-    # MLP block.
+    # MLP block with pre-norm.
     mlp_lnx = mlp_block(
-        in_features=attn_output.shape[-1],
+        in_features=attention_lnx.shape[-1],
         intermediate_dim=cfg.mlp_dim,
         activations=cfg.mlp_activations,
         intermediate_dropout_rate=cfg.dropout_rate,
@@ -165,7 +158,8 @@ class Gemma3DecoderLayer(nn.Module):
         name="mlp",
         config=cfg,
         quant=self.quant,
-    )(attn_output, deterministic=deterministic)
+        use_pre_norm=True,
+    )(attention_lnx, deterministic=deterministic)
 
     if cfg.use_post_ffw_norm:
       mlp_lnx = rms_norm(
@@ -219,6 +213,7 @@ class Gemma3ScannableBlock(nn.Module):
 
   config: Config
   mesh: Mesh
+  model_mode: str
   quant: Optional[Quant] = None
   num_of_layers: int = 1
 
@@ -247,6 +242,7 @@ class Gemma3ScannableBlock(nn.Module):
       layer = Gemma3DecoderLayer(
           config=cfg,
           mesh=mesh,
+          model_mode=model_mode,
           name=f"layers_{layer_id}",
           quant=self.quant,
           attention_type=attention_type,

@@ -46,6 +46,7 @@ class MixtralDecoderLayer(nn.Module):
 
   config: models.Config
   mesh: Mesh
+  model_mode: str
   quant: Optional[Quant] = None
 
   @nn.compact
@@ -86,8 +87,8 @@ class MixtralDecoderLayer(nn.Module):
         max_target_length=cfg.max_target_length,
         max_prefill_predict_length=cfg.max_prefill_predict_length,
         attention_kernel=cfg.attention,
-        inputs_q=lnx,
-        inputs_kv=lnx,
+        inputs_q_shape=lnx.shape,
+        inputs_kv_shape=lnx.shape,
         mesh=mesh,
         dtype=cfg.dtype,
         weight_dtype=cfg.weight_dtype,
@@ -135,7 +136,7 @@ class MixtralDecoderLayer(nn.Module):
     # NOTE: the naming mismatch here is to ensure reverse compatibility with existing checkpoints.
     # The `name` represents the weight name in JAX/checkpoints and so the class name
     # is just for readability.
-    mlp_lnx, load_balance_loss = moe.RoutedMoE(
+    mlp_lnx, load_balance_loss = moe.get_routed_moe(
         name="MoeBlock_0",
         config=cfg,
         num_experts=cfg.num_experts,
