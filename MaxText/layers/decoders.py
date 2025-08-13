@@ -350,9 +350,9 @@ class Decoder(nn.Module):
       case DecoderBlockType.DEEPSEEK:
         return [deepseek.DeepSeekDenseLayer, deepseek.DeepSeekMoELayer]
       case DecoderBlockType.GEMMA:
-        return [gemma.GemmaDecoderLayer]
+        return [gemma.GemmaDecoderLayerToLinen]
       case DecoderBlockType.GEMMA2:
-        return [gemma2.Gemma2DecoderLayer]
+        return [gemma2.Gemma2DecoderLayerToLinen]
       case DecoderBlockType.GEMMA3:
         return [gemma3.Gemma3DecoderLayer]
       case DecoderBlockType.GPT3:
@@ -380,9 +380,7 @@ class Decoder(nn.Module):
 
           def map_fn(path, value):
             max_logging.log(f"models.py: Moving parameter {path} to device")
-            return jax.device_put(
-                value, max_utils.device_space()
-            )
+            return jax.device_put(value, max_utils.device_space())
 
           return jax.tree_util.tree_map_with_path(map_fn, variables)
 
@@ -443,14 +441,7 @@ class Decoder(nn.Module):
         length=length,
         metadata_params={nn.PARTITION_NAME: metadata_axis_name},
     )
-    return scan_fn(
-        config=cfg,
-        mesh=mesh,
-        name=metadata_axis_name,
-        quant=self.quant,
-        model_mode=model_mode,
-        **kwargs
-    )
+    return scan_fn(config=cfg, mesh=mesh, name=metadata_axis_name, quant=self.quant, model_mode=model_mode, **kwargs)
 
   def get_pipeline_stage_module(self, decoder_blocks):
     """get pipeline stage module"""
