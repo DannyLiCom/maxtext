@@ -574,11 +574,7 @@ def save_checkpoint(checkpoint_manager, step, state, config=None, data_iterator=
         checkpoint_manager, (EmergencyCheckpointManager, EmergencyReplicatorCheckpointManager)
     ):
       replicator_error_handler(config)
-      checkpoint_saved = checkpoint_manager.save(
-          step, args=Composite(state=checkpoint_args), force=force
-      )
-      
-      return checkpoint_saved
+      return checkpoint_manager.save(step, args=Composite(state=checkpoint_args), force=force)
     case (_, config) if config and config.dataset_type == "grain":
       grain_iter = grain.PyGrainCheckpointSave(data_iterator.local_iterator)
       return checkpoint_manager.save(step, args=Composite(items=checkpoint_args, iter=grain_iter), force=force)
