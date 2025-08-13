@@ -488,7 +488,7 @@ def maybe_save_checkpoint(checkpoint_manager, state, config, data_iterator, step
     if checkpoint_saved:
       print_save_message(actual_step, config.async_checkpointing)
       # Upload local checkpoint to persistent path (GCS) if using emergency checkpoint manager
-      if isinstance(checkpoint_manager, EmergencyCheckpointManager) and checkpoint_saved:
+      if isinstance(checkpoint_manager, EmergencyCheckpointManager) and checkpoint_saved and jax.process_index() == jax.process_count() - 1:
         try:
             max_logging.log(f"Jacky Uploading local checkpoint from step {actual_step} to persistent GCS path...")
             
