@@ -31,6 +31,8 @@ from MaxText.multihost_dataloading import MultiHostDataLoadIterator
 import numpy as np
 import orbax.checkpoint as ocp
 from orbax.checkpoint import v1 as ocp_v1
+from google.cloud import storage
+import os
 import orbax.checkpoint.experimental.emergency.checkpoint_manager as emergency_checkpoint_manager
 import orbax.checkpoint.experimental.emergency.replicator_checkpoint_manager as emergency_replicator_checkpoint_manager
 # pylint: disable=too-many-positional-arguments
@@ -485,6 +487,49 @@ def maybe_save_checkpoint(checkpoint_manager, state, config, data_iterator, step
     checkpoint_saved = save_checkpoint(checkpoint_manager, actual_step, state, config, data_iterator, force_ckpt_save)
     if checkpoint_saved:
       print_save_message(actual_step, config.async_checkpointing)
+      # Upload local checkpoint to persistent path (GCS) if using emergency checkpoint manager
+      if isinstance(checkpoint_manager, EmergencyCheckpointManager) and checkpoint_saved:
+        try:
+            max_logging.log(f"Jacky Uploading local checkpoint from step {actual_step} to persistent GCS path...")
+            
+            # Get GCS bucket and path from checkpoint manager's persistent directory
+            persistent_path = str(checkpoint_manager.directory)
+            max_logging.log(f"Jacky Persistent checkpoint path: {persistent_path}")
+            if persistent_path.startswith('gs://'):
+              bucket_name = persistent_path.split('/')[2]
+              gcs_prefix = '/'.join(persistent_path.split('/')[3:])
+              
+              client = storage.Client()
+              bucket = client.bucket(bucket_name)
+              
+              # Upload local checkpoint directory to GCS
+              if hasattr(checkpoint_manager, '_checkpoint_manager') and hasattr(checkpoint_manager._checkpoint_manager, '_local_directory'):
+                local_directory = checkpoint_manager._checkpoint_manager._local_directory
+                local_checkpoint_path = os.path.join(local_directory, str(actual_step))
+                print(f"Jacky Local checkpoint path: {local_checkpoint_path}")
+                if os.path.exists(local_checkpoint_path):
+                  for root, dirs, files in os.walk(local_checkpoint_path):
+                    for file in files:
+                      local_file_path = os.path.join(root, file)
+                      relative_path = os.path.relpath(local_file_path, local_directory)
+                      gcs_blob_name = f"{gcs_prefix}/local/{relative_path}"
+                      
+                      blob = bucket.blob(gcs_blob_name)
+                      blob.upload_from_filename(local_file_path)
+                  
+                  max_logging.log(f"Jacky Successfully uploaded checkpoint step {actual_step} to GCS bucket {bucket_name}")
+                else:
+                  max_logging.log(f"Jacky Local checkpoint path {local_checkpoint_path} does not exist")
+            else:
+              max_logging.log(f"Jacky Persistent directory {persistent_path} is not a GCS path")
+          
+        except ImportError:
+          max_logging.log("Jacky google.cloud.storage not available, falling back to checkpoint manager upload")
+          checkpoint_manager.upload_to_persistent(actual_step)
+        except Exception as upload_error:
+          max_logging.log(f"Jacky Warning: Failed to upload checkpoint to persistent storage: {upload_error}")
+          # Don't raise exception here as local checkpoint was saved successfully
+  
   except Exception as e:
     raise exceptions.StopTraining(f"Checkpointing failed. {str(e)}") from e
 
@@ -529,7 +574,11 @@ def save_checkpoint(checkpoint_manager, step, state, config=None, data_iterator=
         checkpoint_manager, (EmergencyCheckpointManager, EmergencyReplicatorCheckpointManager)
     ):
       replicator_error_handler(config)
-      return checkpoint_manager.save(step, args=Composite(state=checkpoint_args), force=force)
+      checkpoint_saved = checkpoint_manager.save(
+          step, args=Composite(state=checkpoint_args), force=force
+      )
+      
+      return checkpoint_saved
     case (_, config) if config and config.dataset_type == "grain":
       grain_iter = grain.PyGrainCheckpointSave(data_iterator.local_iterator)
       return checkpoint_manager.save(step, args=Composite(items=checkpoint_args, iter=grain_iter), force=force)
