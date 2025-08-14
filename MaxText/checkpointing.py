@@ -367,7 +367,10 @@ def load_state_if_possible(
         case (checkpoint_manager, _, _) if isinstance(
             checkpoint_manager, (EmergencyCheckpointManager, EmergencyReplicatorCheckpointManager)
         ):
-          return (checkpoint_manager.restore(step, args=Composite(state=checkpoint_args)).state, None)
+          restored_state_debug=checkpoint_manager.restore(step, args=Composite(state=checkpoint_args)).state
+          max_logging.log(f"Restored state from step {step} with EmergencyCheckpointManager.")
+          max_logging.log(f"Restored state: {restored_state_debug}")
+          return (restored_state_debug, None)
         # Case 2: Matches if dataset type is "grain" and a specific checkpoint file exits for the iterator
         # exists within the checkpoint manager's directory for the given step.
         case (checkpoint_manager, dataset_type, data_iterator) if dataset_type == "grain" and data_iterator and (
@@ -574,6 +577,8 @@ def save_checkpoint(checkpoint_manager, step, state, config=None, data_iterator=
         checkpoint_manager, (EmergencyCheckpointManager, EmergencyReplicatorCheckpointManager)
     ):
       replicator_error_handler(config)
+      # max_logging.log(f"Saving checkpoint at step {step} with emergency checkpoint manager.")
+      # max_logging.log(f"Checkpoint args: {checkpoint_args}")
       return checkpoint_manager.save(step, args=Composite(state=checkpoint_args), force=force)
     case (_, config) if config and config.dataset_type == "grain":
       grain_iter = grain.PyGrainCheckpointSave(data_iterator.local_iterator)
