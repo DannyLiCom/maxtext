@@ -46,6 +46,3 @@ RUN --mount=type=cache,target=/root/.cache/pip bash setup.sh MODE=${ENV_MODE} JA
 
 # Now copy the remaining code (source files that may change frequently)
 COPY . .
-
-RUN yes | pip3 uninstall orbax-checkpoint
-RUN pip install git+https://github.com/google/orbax.git@main#subdirectory=checkpoint
