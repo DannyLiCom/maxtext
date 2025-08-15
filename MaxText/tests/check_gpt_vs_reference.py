@@ -31,6 +31,7 @@ from MaxText import maxtext_utils
 from MaxText.layers import attentions, embeddings, moe
 import numpy as np
 from MaxText.layers.initializers import NdInitializer, nd_dense_init, variable_to_logically_partitioned
+from types import SimpleNamespace
 
 
 """  
@@ -112,22 +113,73 @@ class GptOssMLP(nn.Module):
     return routed_out, router_scores
 
 
+# Standard implementation of repeat_kv
+def repeat_kv(hidden_states: torch.Tensor, n_rep: int) -> torch.Tensor:
+  """
+  Repeats the key and value heads to match the number of query heads in GQA.
+  """
+  batch, num_key_value_heads, slen, head_dim = hidden_states.shape
+  if n_rep == 1:
+    return hidden_states
+  hidden_states = hidden_states[:, :, None, :, :].expand(batch, num_key_value_heads, n_rep, slen, head_dim)
+  return hidden_states.reshape(batch, num_key_value_heads * n_rep, slen, head_dim)
+
+
+# Reference implementation
+def eager_attention_forward(
+    module: nn.Module,
+    query: torch.Tensor,
+    key: torch.Tensor,
+    value: torch.Tensor,
+    attention_mask: Optional[torch.Tensor],
+    scaling: float,
+    dropout: float = 0.0,
+    **kwargs,
+):
+  key_states = repeat_kv(key, module.num_key_value_groups)
+  value_states = repeat_kv(value, module.num_key_value_groups)
+  attn_weights = torch.matmul(query, key_states.transpose(2, 3)) * scaling
+  if attention_mask is not None:
+    causal_mask = attention_mask[:, :, :, : key_states.shape[-2]]
+    attn_weights = attn_weights + causal_mask
+
+  sinks = module.sinks.reshape(1, -1, 1, 1).expand(query.shape[0], -1, query.shape[-2], -1)
+  combined_logits = torch.cat([attn_weights, sinks], dim=-1)
+
+  # This was not in the original implementation and slightly affect results; it prevents overflow in BF16/FP16
+  # when training with bsz>1 we clamp max values.
+
+  combined_logits = combined_logits - combined_logits.max(dim=-1, keepdim=True).values
+  probs = F.softmax(combined_logits, dim=-1, dtype=combined_logits.dtype)
+  scores = probs[..., :-1]  # we drop the sink here
+  attn_weights = nn.functional.dropout(scores, p=dropout, training=module.training)
+  attn_output = torch.matmul(attn_weights, value_states)
+  attn_output = attn_output.transpose(1, 2).contiguous()
+  return attn_output, attn_weights
+
+
 def to_jax(pt_tensor: torch.Tensor) -> jax.Array:
   return jnp.asarray(pt_tensor.detach().numpy())
 
 
 class Config:
-  hidden_size = 32
+
+  hidden_size = 16
   intermediate_size = 16
   num_local_experts = 8
   num_experts_per_tok = 2
   limit = 7.0
+  num_attention_heads = 8
+  num_key_value_heads = 4
+  head_dim = 8
+  attention_bias = False
+  _attn_implementation = "eager"
+  attention_dropout = 0.0
 
 
 class GptOssTest(unittest.TestCase):
   """Test for the MaxText GPT OSS implementation."""
 
-  # TODO(ranran): test dense_matmul first
   def test_mlp_block(self):
     torch.set_default_dtype(torch.float32)
     torch.manual_seed(42)
@@ -209,11 +261,38 @@ class GptOssTest(unittest.TestCase):
     mse = jnp.mean((to_jax(expected_output) - actual_output) ** 2)
     self.assertLess(mse, 1e-1, f"expected_output mismatch with actual_output, MSE {mse} exceeds threshold 1e-1")
 
-  def test_full_attention_block(self):
-    pass
+  def test_attention_op_with_sinks(self):
+    torch.set_default_dtype(torch.float32)
+    torch.manual_seed(42)
+    config = Config()
 
-  def test_sliding_attention_block(self):
-    pass
+    batch_size = 4
+    seq_len = 6
+    hidden_states = torch.randn(batch_size, seq_len, config.hidden_size)
+
+    mock_module = SimpleNamespace(
+        num_key_value_groups=config.num_attention_heads // config.num_key_value_heads,
+        sinks=torch.randn(config.num_attention_heads),
+        training=False,  # Set to False to make dropout deterministic
+    )
+
+    query = torch.randn(batch_size, config.num_attention_heads, seq_len, config.head_dim)
+    key = torch.randn(batch_size, config.num_key_value_heads, seq_len, config.head_dim)
+    value = torch.randn(batch_size, config.num_key_value_heads, seq_len, config.head_dim)
+    attention_mask = torch.zeros(batch_size, 1, seq_len, seq_len)  # Causal mask
+    scaling = 1.0 / (config.head_dim**0.5)
+
+    expected_attn_output, expected_attn_weights = eager_attention_forward(
+        module=mock_module,
+        query=query,
+        key=key,
+        value=value,
+        attention_mask=attention_mask,
+        scaling=scaling,
+        dropout=0.0,  # Ensure dropout is off for predictable results
+    )
+
+    # TODO: test apply_attention_dot
 
 
 if __name__ == "__main__":
