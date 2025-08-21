@@ -16,8 +16,6 @@
 # pylint: disable=arguments-differ
 # pylint: disable=no-name-in-module
 
-from typing import Optional
-
 import jax.numpy as jnp
 from jax.sharding import Mesh
 
@@ -53,7 +51,7 @@ class TransformerLinenPure(nn.Module):
   # We generally use MaxText.common_types.MODEL_MODE_TRAIN or
   # MaxText.common_types.MODEL_MODE_PREFILL for initializations here.
   # TODO: Make model_mode required after confirming no users are affected.
-  model_mode: str = MODEL_MODE_TRAIN # May be different than the model_mode passed to __call__
+  model_mode: str = MODEL_MODE_TRAIN  # May be different than the model_mode passed to __call__
   # pylint: enable=attribute-defined-outside-init
 
   def init(self, *args, model_mode: str = MODEL_MODE_TRAIN, **kwargs):
@@ -71,7 +69,6 @@ class TransformerLinenPure(nn.Module):
     else:
       module = self
     return nn.Module.apply(module, *args, **kwargs)
-
 
   def setup(self):
     """Initialize shared_embedding & decoder layers."""
@@ -107,15 +104,14 @@ class TransformerLinenPure(nn.Module):
       decoder_input_tokens: jnp.ndarray,
       decoder_positions: jnp.ndarray,
       decoder_segment_ids=None,
-      encoder_images: Optional[jnp.ndarray] = None,
+      encoder_images: None | jnp.ndarray = None,
       enable_dropout=True,
-      model_mode=MODEL_MODE_TRAIN,
       previous_chunk=None,
-      true_length: Optional[int] = None,
-      slot: Optional[int] = None,
-      page_state: Optional[page_manager.PageState] = None,
-      decoder_target_tokens: Optional[jnp.ndarray] = None,
-      decoder_target_mask: Optional[jnp.ndarray] = None,
+      true_length: None | int = None,
+      slot: None | int = None,
+      page_state: None | page_manager.PageState = None,
+      decoder_target_tokens: None | jnp.ndarray = None,
+      decoder_target_mask: None | jnp.ndarray = None,
   ):
     """Applies Transformer decoder-branch on encoded-input and target.
 
@@ -125,7 +121,7 @@ class TransformerLinenPure(nn.Module):
         for this request.
     """
 
-    if decoder_segment_ids is not None and model_mode == MODEL_MODE_AUTOREGRESSIVE:
+    if decoder_segment_ids is not None and self.model_mode == MODEL_MODE_AUTOREGRESSIVE:
       raise ValueError(
           f"During autoregressive decoding we assume the tokens are in the active sequence"
           f" which is always {DECODING_ACTIVE_SEQUENCE_INDICATOR}."
@@ -182,7 +178,7 @@ class TransformerLinenPure(nn.Module):
           position_ids=decoder_positions,
           decoder_segment_ids=decoder_segment_ids,
           deterministic=not enable_dropout,
-          model_mode=model_mode,
+          model_mode=self.model_mode,
       )
 
     return logits
@@ -412,7 +408,7 @@ class ZeroOneTransformer(nn.Module):
   # We generally use MaxText.common_types.MODEL_MODE_TRAIN or
   # MaxText.common_types.MODEL_MODE_PREFILL for initializations here.
   # TODO: Make model_mode required after confirming no users are affected.
-  model_mode: str = MODEL_MODE_TRAIN # May be different than the model_mode passed to __call__
+  model_mode: str = MODEL_MODE_TRAIN  # May be different than the model_mode passed to __call__
 
   def setup(self):
     self.model = transformer_as_linen(self.config, self.mesh, self.quant, self.model_mode)
@@ -422,28 +418,28 @@ class ZeroOneTransformer(nn.Module):
       decoder_input_tokens: jnp.ndarray,
       decoder_positions: jnp.ndarray,
       decoder_segment_ids=None,
-      encoder_images: Optional[jnp.ndarray] = None,
+      encoder_images: None | jnp.ndarray = None,
       enable_dropout=True,
       previous_chunk=None,
-      true_length: Optional[int] = None,
-      slot: Optional[int] = None,
-      page_state: Optional[page_manager.PageState] = None,
+      true_length: None | int = None,
+      slot: None | int = None,
+      page_state: None | page_manager.PageState = None,
       partition_spec=None,
-      decoder_target_tokens: Optional[jnp.ndarray] = None,
-      decoder_target_mask: Optional[jnp.ndarray] = None,
+      decoder_target_tokens: None | jnp.ndarray = None,
+      decoder_target_mask: None | jnp.ndarray = None,
       nnx_method: str | None = None,
   ):
     if self.is_initializing():
       return self.model(
-          decoder_input_tokens,
-          decoder_positions,
-          decoder_segment_ids,
-          encoder_images,
-          enable_dropout,
-          previous_chunk,
-          true_length,
-          slot,
-          page_state,
+          decoder_input_tokens=decoder_input_tokens,
+          decoder_positions=decoder_positions,
+          decoder_segment_ids=decoder_segment_ids,
+          encoder_images=encoder_images,
+          enable_dropout=enable_dropout,
+          previous_chunk=previous_chunk,
+          true_length=true_length,
+          slot=slot,
+          page_state=page_state,
       )
     all_model_weights = all_gather_over_fsdp(
         self.model.variables, partition_spec, mesh=self.mesh, logical_axis_rules=self.config.logical_axis_rules
