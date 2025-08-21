@@ -14,36 +14,55 @@
 
 """Define user specific configurations for recipes here."""
 
+import dataclasses
 import os
-
+import sys
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(parent_dir)
 import maxtext_xpk_runner as mxr
 from xpk_configs import XpkClusterConfig
 
-cluster_config = XpkClusterConfig(
-    cluster_name="test-v5e-32-cluster",
-    project="cloud-tpu-cluster",
-    zone="us-south1-a",
-    device_type="v5litepod-32",
-)
-xpk_path = "~/xpk"
+@dataclasses.dataclass
+class UserConfig:
+    """The default configuration can be modified here."""
+    user: str = "user_name"
+    cluster_name: str = "test-v5e-32-cluster"
+    project: str = "cloud-tpu-cluster"
+    zone: str = "us-south1-a"
+    device_type: str = "v5litepod-32"
 
-user = os.environ["USER"]
-region = "-".join(cluster_config.zone.split("-")[:-1])
-proxy_image = (
-    f"us-docker.pkg.dev/path/to/{user}/proxy_server"
-)
-server_image = (
-    f"us-docker.pkg.dev/path/to/{user}/server"
-)
-colocated_python_image = f"gcr.io/{cluster_config.project}/path/to/{user}/colocated_python_sidecar"
-runner = f"gcr.io/{cluster_config.project}/{user}_maxtext_latest:latest"
-base_output_directory = f"gs://{user}-{region}/{user}"
-headless = True
-pathways_config = mxr.PathwaysConfig(
-    server_image=server_image,
-    proxy_server_image=proxy_image,
-    runner_image=runner,
-    colocated_python_sidecar_image=colocated_python_image,
-    headless=headless,
-)
-headless_workload_name = f"{user[:3]}-headless"
+    server_image: str = "us-docker.pkg.dev/cloud-tpu-v2-images-dev/pathways/unsanitized_server:latest"
+    proxy_image: str = "us-docker.pkg.dev/cloud-tpu-v2-images-dev/pathways/unsanitized_proxy_server:latest"
+    runner: str = "us-docker.pkg.dev/cloud-tpu-v2-images-dev/pathways/maxtext_jax_stable:latest"
+    colocated_python_image: str = "gcr.io/cloud-tpu-v2-images-dev/colocated_python_sidecar_latest:latest"
+
+    xpk_path: str = "~/xpk"
+
+    def __post_init__(self):
+        """Automatically generate derived attributes after the object is created."""
+        self.cluster_config = XpkClusterConfig(
+            cluster_name=self.cluster_name,
+            project=self.project,
+            zone=self.zone,
+            device_type=self.device_type,
+        )
+        
+        self.region = "-".join(self.zone.split("-")[:-1])
+        self.headless = True
+
+        self.pathways_config = mxr.PathwaysConfig(
+            server_image=self.server_image,
+            proxy_server_image=self.proxy_image,
+            runner_image=self.runner,
+            colocated_python_sidecar_image=self.colocated_python_image,
+            headless=self.headless,
+        )
+        self.headless_workload_name = f"{self.user[:3]}-headless"
+        self.base_output_directory = f"gs://{self.user}-{self.region}/{self.user}"
+
+if __name__ == "__main__":
+  user_config = UserConfig()
+
+  # Access the generated attributes
+  for key, value in user_config.__dict__.items():
+    print(f"{key}: {value}")
