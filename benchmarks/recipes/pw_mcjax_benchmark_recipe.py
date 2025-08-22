@@ -17,37 +17,34 @@ import os
 import sys
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(parent_dir)
-
-import maxtext_trillium_model_configs as model_configs
 from . import args_helper as helper
 from .user_configs import UserConfig
 from .runner_utils import generate_and_run_workloads
 
-BENCHMARK_STEPS = 20
-
 def main() -> int:
-    """Main program entry point"""
-    # Define user specific configurations for recipes here
-    user_config = UserConfig()
-    should_continue = helper.handle_cmd_args(
-        user_config.cluster_config, helper.DELETE, xpk_path=user_config.xpk_path
-    )
-    
-    if not should_continue:
-        return 0
+  """Main program entry point"""
+  # Define user specific configurations for recipes here
+  user_config = UserConfig(
+      user='lidanny',
+      cluster_name='jf-v6e-64-4',
+      project='cienet-cmcs',
+      zone='europe-west4-a',
+      device_type='v6e-64',
+      benchmark_steps=20,
+      num_slices_list=[1],
+      runner='gcr.io/tpu-prod-env-one-vm/lidanny_latest'
+  )
+  should_continue = helper.handle_cmd_args(
+      user_config.cluster_config, helper.DELETE, xpk_path=user_config.xpk_path
+  )
 
-    models = {
-        "mcjax": [],
-        "pathways": [
-            model_configs.llama3_1_8b_8192,
-        ]
-    }
-    
-    num_slices_list = [2]
-    
-    generate_and_run_workloads(user_config, models, num_slices_list, BENCHMARK_STEPS)
-    
+  if not should_continue:
     return 0
 
+  generate_and_run_workloads(user_config, user_config.models, user_config.num_slices_list, user_config.benchmark_steps)
+
+  return 0
+
+
 if __name__ == "__main__":
-    main()
+  main()
