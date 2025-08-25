@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Define user specific configurations for recipes here."""
-
 import dataclasses
 import os
 import sys
@@ -39,7 +37,7 @@ class UserConfig:
   server_image: str = 'us-docker.pkg.dev/cloud-tpu-v2-images-dev/pathways/unsanitized_server:latest'
   proxy_image: str = 'us-docker.pkg.dev/cloud-tpu-v2-images-dev/pathways/unsanitized_proxy_server:latest'
   runner: str = 'us-docker.pkg.dev/cloud-tpu-v2-images-dev/pathways/maxtext_jax_stable:latest'
-  colocated_python_image: str = 'gcr.io/cloud-tpu-v2-images-dev/colocated_python_sidecar_latest:latest'
+  colocated_python_image: str = None
 
   # model configuration
   benchmark_steps: int = 20

@@ -26,12 +26,12 @@ def main() -> int:
   # Define user specific configurations for recipes here
   user_config = UserConfig(
       user='lidanny',
-      cluster_name='jf-v6e-64-4',
-      project='cienet-cmcs',
-      zone='europe-west4-a',
-      device_type='v6e-64',
+      cluster_name='bodaborg-v6e-256-lcscld-c',
+      project='tpu-prod-env-one-vm',
+      zone='southamerica-west1-a',
+      device_type='v6e-256',
       benchmark_steps=20,
-      num_slices_list=[1],
+      num_slices_list=[2],
       runner='gcr.io/tpu-prod-env-one-vm/lidanny_latest'
   )
   should_continue = helper.handle_cmd_args(
