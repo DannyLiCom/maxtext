@@ -39,14 +39,9 @@ class UserConfig:
 
   # model configuration
   benchmark_steps: int = 20
+  selected_model_framework: list[str] = dataclasses.field(default_factory=list)
   selected_model_names: list[str] = dataclasses.field(default_factory=list)
   num_slices_list: list[int] = dataclasses.field(default_factory=lambda: [2])
-  # models: dict = dataclasses.field(default_factory=lambda: {
-  #   'mcjax': [],
-  #   'pathways': [
-  #       v6e_model_configs.llama3_1_8b_8192,
-  #   ],
-  # })
   
   xpk_path: str = '~/xpk'
 
@@ -60,7 +55,7 @@ class UserConfig:
     )
     
     self.region = '-'.join(self.zone.split('-')[:-1])
-    self.headless = True
+    self.headless = False
 
     self.pathways_config = mxr.PathwaysConfig(
         server_image=self.server_image,
@@ -76,39 +71,47 @@ class UserConfig:
     self.headless_workload_name = f'{self.user[:3]}-headless'
     self.base_output_directory = f'gs://{self.user}-{self.region}/{self.user}-'
 
-
+    # Iterate through the list of user-selected model frameworks, validating each one
+    for model_framework in self.selected_model_framework:
+        if model_framework not in ms.AVAILABLE_MODELS_FRAMEWORKS:
+            raise ValueError(
+                f"Model framework '{model_framework}' not available. "
+                f"Available model frameworks are: {list(ms.AVAILABLE_MODELS_FRAMEWORKS)}"
+            )
+        
     # Initialize the model_set list to store the user's selected model configurations
-    model_set = []
     device_base_type = self.device_type.split('-')[0]
-    if device_base_type not in ms.AVAILABLE_MODELS:
+    if device_base_type not in ms.AVAILABLE_MODELS_NAMES:
         raise ValueError(f"Unknown device type: {device_base_type}")
 
-    # Iterate through the list of user-selected models, validating and adding each one
+    # Iterate through the list of user-selected model names, validating each one
     for model_name in self.selected_model_names:
-        if model_name not in ms.AVAILABLE_MODELS[device_base_type]:
+        if model_name not in ms.AVAILABLE_MODELS_NAMES[device_base_type]:
             raise ValueError(
-                f"Model '{model_name}' not available for device type '{device_base_type}'. "
-                f"Available models are: {list(ms.AVAILABLE_MODELS[device_base_type].keys())}"
+                f"Model name '{model_name}' not available for device type '{device_base_type}'. "
+                f"Available model names are: {list(ms.AVAILABLE_MODELS_NAMES[device_base_type].keys())}"
             )
-        model_set.append(ms.AVAILABLE_MODELS[device_base_type][model_name])
-
-    self.models = {
-        'mcjax': [], # model_set,
-        'pathways': model_set,
-    }
+    
+    # Build the model configuration
+    self.models = {}
+    for model_framework in self.selected_model_framework:
+        self.models[model_framework] = []
+        for model_name in self.selected_model_names:
+            self.models[model_framework].append(ms.AVAILABLE_MODELS_NAMES[device_base_type][model_name])
 
 if __name__ == '__main__':
-  user_config = UserConfig()
-  print("List of available models:")
-  for device_type, models in ms.AVAILABLE_MODELS.items():
-      print(f"- {device_type}: {list(models.keys())}")
-  
-  # Example: Create an instance with two selected models
-  user_config = UserConfig(selected_model_names=['gpt_3_175b_v5e_256', 'llama2_70b_v5e_256'])
-  
-  print("\nThe model you selected is：")
-  for model_name in user_config.selected_model_names:
-      print(f"- {model_name}")  
+  user_config = UserConfig(
+      user='lidanny',
+      cluster_name='bodaborg-v6e-256-lcscld-c',
+      project='tpu-prod-env-one-vm',
+      zone='southamerica-west1-a',
+      device_type='v6e-256',
+      benchmark_steps=20,
+      num_slices_list=[2],
+      runner='gcr.io/tpu-prod-env-one-vm/lidanny_latest',
+      selected_model_framework=['pathways', 'mcjax'],
+      selected_model_names=['llama3_1_8b_8192', "llama3_1_70b_8192"]
+  )
   
   # Access the generated attributes
   for key, value in user_config.__dict__.items():

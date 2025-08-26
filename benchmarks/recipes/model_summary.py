@@ -3,7 +3,9 @@ import maxtext_v5e_model_configs as v5e_model_configs
 import maxtext_v5p_model_configs as v5p_model_configs
 
 
-AVAILABLE_MODELS = {
+AVAILABLE_MODELS_FRAMEWORKS = ["mcjax", "pathways"]
+
+AVAILABLE_MODELS_NAMES = {
     'v6e': {
         'llama3_1_8b_8192': v6e_model_configs.llama3_1_8b_8192,
         'llama3_1_70b_8192': v6e_model_configs.llama3_1_70b_8192,
