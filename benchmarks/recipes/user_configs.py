@@ -19,9 +19,7 @@ parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(parent_dir)
 import maxtext_xpk_runner as mxr
 from xpk_configs import XpkClusterConfig
-import maxtext_trillium_model_configs as v6e_model_configs
-import maxtext_v5e_model_configs as v5e_model_configs
-import maxtext_v5p_model_configs as v5p_model_configs
+from . import model_summary as ms
 
 @dataclasses.dataclass
 class UserConfig:
@@ -41,13 +39,14 @@ class UserConfig:
 
   # model configuration
   benchmark_steps: int = 20
+  selected_model_names: list[str] = dataclasses.field(default_factory=list)
   num_slices_list: list[int] = dataclasses.field(default_factory=lambda: [2])
-  models: dict = dataclasses.field(default_factory=lambda: {
-    'mcjax': [],
-    'pathways': [
-        v6e_model_configs.llama3_1_8b_8192,
-    ],
-  })
+  # models: dict = dataclasses.field(default_factory=lambda: {
+  #   'mcjax': [],
+  #   'pathways': [
+  #       v6e_model_configs.llama3_1_8b_8192,
+  #   ],
+  # })
   
   xpk_path: str = '~/xpk'
 
@@ -69,13 +68,48 @@ class UserConfig:
         runner_image=self.runner,
         colocated_python_sidecar_image=self.colocated_python_image,
         headless=self.headless,
+
+        server_flags="",
+        proxy_flags="",
+        worker_flags="",
     )
     self.headless_workload_name = f'{self.user[:3]}-headless'
     self.base_output_directory = f'gs://{self.user}-{self.region}/{self.user}-'
 
+
+    # Initialize the model_set list to store the user's selected model configurations
+    model_set = []
+    device_base_type = self.device_type.split('-')[0]
+    if device_base_type not in ms.AVAILABLE_MODELS:
+        raise ValueError(f"Unknown device type: {device_base_type}")
+
+    # Iterate through the list of user-selected models, validating and adding each one
+    for model_name in self.selected_model_names:
+        if model_name not in ms.AVAILABLE_MODELS[device_base_type]:
+            raise ValueError(
+                f"Model '{model_name}' not available for device type '{device_base_type}'. "
+                f"Available models are: {list(ms.AVAILABLE_MODELS[device_base_type].keys())}"
+            )
+        model_set.append(ms.AVAILABLE_MODELS[device_base_type][model_name])
+
+    self.models = {
+        'mcjax': [], # model_set,
+        'pathways': model_set,
+    }
+
 if __name__ == '__main__':
   user_config = UserConfig()
-
+  print("List of available models:")
+  for device_type, models in ms.AVAILABLE_MODELS.items():
+      print(f"- {device_type}: {list(models.keys())}")
+  
+  # Example: Create an instance with two selected models
+  user_config = UserConfig(selected_model_names=['gpt_3_175b_v5e_256', 'llama2_70b_v5e_256'])
+  
+  print("\nThe model you selected is：")
+  for model_name in user_config.selected_model_names:
+      print(f"- {model_name}")  
+  
   # Access the generated attributes
   for key, value in user_config.__dict__.items():
     print(f'{key}: {value}')

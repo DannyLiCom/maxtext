@@ -32,7 +32,8 @@ def main() -> int:
       device_type='v6e-256',
       benchmark_steps=20,
       num_slices_list=[2],
-      runner='gcr.io/tpu-prod-env-one-vm/lidanny_latest'
+      runner='gcr.io/tpu-prod-env-one-vm/lidanny_latest',
+      selected_model_names=['llama3_1_8b_8192']
   )
   should_continue = helper.handle_cmd_args(
       user_config.cluster_config, helper.DELETE, xpk_path=user_config.xpk_path
@@ -41,7 +42,7 @@ def main() -> int:
   if not should_continue:
     return 0
 
-  generate_and_run_workloads(user_config, user_config.models, user_config.num_slices_list, user_config.benchmark_steps)
+  generate_and_run_workloads(user_config, user_config.num_slices_list, user_config.benchmark_steps)
 
   return 0
 

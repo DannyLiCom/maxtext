@@ -5,9 +5,10 @@ import logging
 import maxtext_xpk_runner as mxr
 import maxtext_trillium_model_configs as model_configs
 
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def generate_and_run_workloads(user_config, models, num_slices_list, num_steps):
+def generate_and_run_workloads(user_config, num_slices_list, num_steps):
   """
   Generates and executes XPK workloads based on the given configuration.
 
@@ -20,16 +21,12 @@ def generate_and_run_workloads(user_config, models, num_slices_list, num_steps):
   xpk_workload_cmds = []
   xpk_workload_names = []
 
-  for infra, model_list in models.items():
+  for infra, model_list in user_config.models.items():
     if not model_list:
       logging.info(f"Skipping empty model list for infrastructure: {infra}")
       continue
 
     for model in model_list:
-      model.tuning_params["use_vertex_tensorboard"] = True
-      model.tuning_params["vertex_tensorboard_project"] = user_config.project
-      model.tuning_params["vertex_tensorboard_region"] = user_config.region
-
       for num_slices in num_slices_list:
         # Create a WorkloadConfig object
         wl_config = mxr.WorkloadConfig(
