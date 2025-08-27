@@ -32,6 +32,8 @@ def main() -> int:
       device_type='v6e-256',
       benchmark_steps=20,
       num_slices_list=[2],
+      server_image = 'us-docker.pkg.dev/cloud-tpu-v2-images-dev/pathways/unsanitized_server:latest',
+      proxy_image = 'us-docker.pkg.dev/cloud-tpu-v2-images-dev/pathways/unsanitized_proxy_server:latest',
       runner='gcr.io/tpu-prod-env-one-vm/lidanny_latest',
       selected_model_names=['llama3_1_8b_8192']
   )

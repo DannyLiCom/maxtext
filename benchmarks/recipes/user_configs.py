@@ -20,6 +20,17 @@ sys.path.append(parent_dir)
 import maxtext_xpk_runner as mxr
 from xpk_configs import XpkClusterConfig
 from . import model_summary as ms
+from .. import maxtext_trillium_model_configs as v6e_model_configs
+from .. import maxtext_v5e_model_configs as v5e_model_configs
+from .. import maxtext_v5p_model_configs as v5p_model_configs
+
+AVAILABLE_MODELS_FRAMEWORKS = ["mcjax", "pathways"]
+
+AVAILABLE_MODELS = {
+    'v6e': v6e_model_configs.trillium_model_dict,
+    'v5litepod': v5e_model_configs.v5e_model_dict,
+    'v5p': v5p_model_configs.v5p_model_dict
+}
 
 @dataclasses.dataclass
 class UserConfig:
@@ -32,15 +43,15 @@ class UserConfig:
   device_type: str = 'v5litepod-32'
 
   # Images for env
-  server_image: str = 'us-docker.pkg.dev/cloud-tpu-v2-images-dev/pathways/unsanitized_server:latest'
-  proxy_image: str = 'us-docker.pkg.dev/cloud-tpu-v2-images-dev/pathways/unsanitized_proxy_server:latest'
-  runner: str = 'us-docker.pkg.dev/cloud-tpu-v2-images-dev/pathways/maxtext_jax_stable:latest'
+  server_image: str = 'us-docker.pkg.dev/cloud-tpu-v2-images/pathways/proxy_server'
+  proxy_image: str = 'us-docker.pkg.dev/cloud-tpu-v2-images/pathways/server'
+  runner: str = 'us-docker.pkg.dev/path/to/maxtext_runner'
   colocated_python_image: str = None
 
   # model configuration
   benchmark_steps: int = 20
-  selected_model_framework: list[str] = dataclasses.field(default_factory=list)
-  selected_model_names: list[str] = dataclasses.field(default_factory=list)
+  selected_model_framework: list[str] = dataclasses.field(default_factory=lambda: ["pathways", "mcjax"])
+  selected_model_names: list[str] = dataclasses.field(default_factory=lambda: ["llama3_1_8b_8192"])
   num_slices_list: list[int] = dataclasses.field(default_factory=lambda: [2])
   
   xpk_path: str = '~/xpk'
@@ -73,23 +84,26 @@ class UserConfig:
 
     # Iterate through the list of user-selected model frameworks, validating each one
     for model_framework in self.selected_model_framework:
-        if model_framework not in ms.AVAILABLE_MODELS_FRAMEWORKS:
+        if model_framework not in AVAILABLE_MODELS_FRAMEWORKS:
             raise ValueError(
                 f"Model framework '{model_framework}' not available. "
-                f"Available model frameworks are: {list(ms.AVAILABLE_MODELS_FRAMEWORKS)}"
+                f"Available model frameworks are: {list(AVAILABLE_MODELS_FRAMEWORKS)}"
             )
         
     # Initialize the model_set list to store the user's selected model configurations
     device_base_type = self.device_type.split('-')[0]
-    if device_base_type not in ms.AVAILABLE_MODELS_NAMES:
-        raise ValueError(f"Unknown device type: {device_base_type}")
+    if device_base_type not in AVAILABLE_MODELS:
+        raise ValueError(
+                f"Unknown device base type: {device_base_type}. "
+                f"Original device type was: {self.device_type}"
+            )
 
     # Iterate through the list of user-selected model names, validating each one
     for model_name in self.selected_model_names:
-        if model_name not in ms.AVAILABLE_MODELS_NAMES[device_base_type]:
+        if model_name not in AVAILABLE_MODELS[device_base_type]:
             raise ValueError(
                 f"Model name '{model_name}' not available for device type '{device_base_type}'. "
-                f"Available model names are: {list(ms.AVAILABLE_MODELS_NAMES[device_base_type].keys())}"
+                f"Available model names are: {list(AVAILABLE_MODELS[device_base_type].keys())}"
             )
     
     # Build the model configuration
@@ -97,7 +111,7 @@ class UserConfig:
     for model_framework in self.selected_model_framework:
         self.models[model_framework] = []
         for model_name in self.selected_model_names:
-            self.models[model_framework].append(ms.AVAILABLE_MODELS_NAMES[device_base_type][model_name])
+            self.models[model_framework].append(AVAILABLE_MODELS[device_base_type][model_name])
 
 if __name__ == '__main__':
   user_config = UserConfig(
@@ -108,6 +122,8 @@ if __name__ == '__main__':
       device_type='v6e-256',
       benchmark_steps=20,
       num_slices_list=[2],
+      server_image = 'us-docker.pkg.dev/cloud-tpu-v2-images-dev/pathways/unsanitized_server:latest',
+      proxy_image = 'us-docker.pkg.dev/cloud-tpu-v2-images-dev/pathways/unsanitized_proxy_server:latest',
       runner='gcr.io/tpu-prod-env-one-vm/lidanny_latest',
       selected_model_framework=['pathways', 'mcjax'],
       selected_model_names=['llama3_1_8b_8192', "llama3_1_70b_8192"]
