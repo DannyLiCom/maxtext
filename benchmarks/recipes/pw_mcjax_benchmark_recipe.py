@@ -26,16 +26,17 @@ def main() -> int:
   # Define user specific configurations for recipes here
   user_config = UserConfig(
       user='lidanny',
-      cluster_name='bodaborg-v6e-256-lcscld-c',
-      project='tpu-prod-env-one-vm',
-      zone='southamerica-west1-a',
-      device_type='v6e-256',
+      cluster_name='pw-scale-test-v5e-32',
+      project='cloud-tpu-multipod-dev',
+      zone='us-south1-a',
+      device_type='v5litepod-32',
       benchmark_steps=20,
       num_slices_list=[2],
       server_image = 'us-docker.pkg.dev/cloud-tpu-v2-images-dev/pathways/unsanitized_server:latest',
       proxy_image = 'us-docker.pkg.dev/cloud-tpu-v2-images-dev/pathways/unsanitized_proxy_server:latest',
-      runner='gcr.io/tpu-prod-env-one-vm/lidanny_latest',
-      selected_model_names=['llama3_1_8b_8192']
+      runner='gcr.io/tpu-prod-env-one-vm/chzheng_latest:latest',
+      selected_model_framework=['pathways'],
+      selected_model_names=['llama3_1_8b_8192_v5e_256']
   )
   should_continue = helper.handle_cmd_args(
       user_config.cluster_config, helper.DELETE, xpk_path=user_config.xpk_path

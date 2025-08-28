@@ -19,17 +19,17 @@ parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(parent_dir)
 import maxtext_xpk_runner as mxr
 from xpk_configs import XpkClusterConfig
-from . import model_summary as ms
 from .. import maxtext_trillium_model_configs as v6e_model_configs
 from .. import maxtext_v5e_model_configs as v5e_model_configs
 from .. import maxtext_v5p_model_configs as v5p_model_configs
+from .pw_utils import build_user_models
 
 AVAILABLE_MODELS_FRAMEWORKS = ["mcjax", "pathways"]
 
 AVAILABLE_MODELS = {
-    'v6e': v6e_model_configs.trillium_model_dict,
-    'v5litepod': v5e_model_configs.v5e_model_dict,
-    'v5p': v5p_model_configs.v5p_model_dict
+  'v6e': v6e_model_configs.trillium_model_dict,
+  'v5litepod': v5e_model_configs.v5e_model_dict,
+  'v5p': v5p_model_configs.v5p_model_dict
 }
 
 @dataclasses.dataclass
@@ -59,74 +59,52 @@ class UserConfig:
   def __post_init__(self):
     """Automatically generate derived attributes after the object is created."""
     self.cluster_config = XpkClusterConfig(
-        cluster_name=self.cluster_name,
-        project=self.project,
-        zone=self.zone,
-        device_type=self.device_type,
+      cluster_name=self.cluster_name,
+      project=self.project,
+      zone=self.zone,
+      device_type=self.device_type,
     )
     
     self.region = '-'.join(self.zone.split('-')[:-1])
     self.headless = False
 
     self.pathways_config = mxr.PathwaysConfig(
-        server_image=self.server_image,
-        proxy_server_image=self.proxy_image,
-        runner_image=self.runner,
-        colocated_python_sidecar_image=self.colocated_python_image,
-        headless=self.headless,
+      server_image=self.server_image,
+      proxy_server_image=self.proxy_image,
+      runner_image=self.runner,
+      colocated_python_sidecar_image=self.colocated_python_image,
+      headless=self.headless,
 
-        server_flags="",
-        proxy_flags="",
-        worker_flags="",
+      server_flags="",
+      proxy_flags="",
+      worker_flags="",
     )
     self.headless_workload_name = f'{self.user[:3]}-headless'
     self.base_output_directory = f'gs://{self.user}-{self.region}/{self.user}-'
 
-    # Iterate through the list of user-selected model frameworks, validating each one
-    for model_framework in self.selected_model_framework:
-        if model_framework not in AVAILABLE_MODELS_FRAMEWORKS:
-            raise ValueError(
-                f"Model framework '{model_framework}' not available. "
-                f"Available model frameworks are: {list(AVAILABLE_MODELS_FRAMEWORKS)}"
-            )
-        
-    # Initialize the model_set list to store the user's selected model configurations
     device_base_type = self.device_type.split('-')[0]
-    if device_base_type not in AVAILABLE_MODELS:
-        raise ValueError(
-                f"Unknown device base type: {device_base_type}. "
-                f"Original device type was: {self.device_type}"
-            )
-
-    # Iterate through the list of user-selected model names, validating each one
-    for model_name in self.selected_model_names:
-        if model_name not in AVAILABLE_MODELS[device_base_type]:
-            raise ValueError(
-                f"Model name '{model_name}' not available for device type '{device_base_type}'. "
-                f"Available model names are: {list(AVAILABLE_MODELS[device_base_type].keys())}"
-            )
-    
-    # Build the model configuration
-    self.models = {}
-    for model_framework in self.selected_model_framework:
-        self.models[model_framework] = []
-        for model_name in self.selected_model_names:
-            self.models[model_framework].append(AVAILABLE_MODELS[device_base_type][model_name])
+    self.models = build_user_models(
+      self.selected_model_framework,
+      self.selected_model_names,
+      device_base_type,
+      AVAILABLE_MODELS_FRAMEWORKS,
+      AVAILABLE_MODELS
+    )
 
 if __name__ == '__main__':
   user_config = UserConfig(
-      user='lidanny',
-      cluster_name='bodaborg-v6e-256-lcscld-c',
-      project='tpu-prod-env-one-vm',
-      zone='southamerica-west1-a',
-      device_type='v6e-256',
-      benchmark_steps=20,
-      num_slices_list=[2],
-      server_image = 'us-docker.pkg.dev/cloud-tpu-v2-images-dev/pathways/unsanitized_server:latest',
-      proxy_image = 'us-docker.pkg.dev/cloud-tpu-v2-images-dev/pathways/unsanitized_proxy_server:latest',
-      runner='gcr.io/tpu-prod-env-one-vm/lidanny_latest',
-      selected_model_framework=['pathways', 'mcjax'],
-      selected_model_names=['llama3_1_8b_8192', "llama3_1_70b_8192"]
+    user='lidanny',
+    cluster_name='bodaborg-v6e-256-lcscld-c',
+    project='tpu-prod-env-one-vm',
+    zone='southamerica-west1-a',
+    device_type='v6e-256',
+    benchmark_steps=20,
+    num_slices_list=[2],
+    server_image = 'us-docker.pkg.dev/cloud-tpu-v2-images-dev/pathways/unsanitized_server:latest',
+    proxy_image = 'us-docker.pkg.dev/cloud-tpu-v2-images-dev/pathways/unsanitized_proxy_server:latest',
+    runner='gcr.io/tpu-prod-env-one-vm/lidanny_latest',
+    selected_model_framework=['pathways', 'mcjax'],
+    selected_model_names=['llama3_1_8b_8192', "llama3_1_70b_8192"]
   )
   
   # Access the generated attributes

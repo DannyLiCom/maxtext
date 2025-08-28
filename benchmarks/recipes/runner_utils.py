@@ -40,7 +40,7 @@ def generate_and_run_workloads(user_config, num_slices_list, num_steps):
             max_restarts=0,
             libtpu_type=None,
             libtpu_nightly_version="",
-            base_docker_image=user_config.runner_image if infra == "mcjax" else None,
+            base_docker_image=user_config.runner if infra == "mcjax" else None,
             pathways_config=user_config.pathways_config if infra == "pathways" else None,
             xpk_path=user_config.xpk_path,
             num_steps=num_steps,
