@@ -599,11 +599,8 @@ def generate_xpk_workload_cmd(
   if workload_name is None: # Generate name if not provided
     if is_pathways_enabled:
       post_fix = f"-{wl_config.num_slices}-{temp_post_fix}"
-      # name = (
-      #     f"{pw_prefix}{wl_config.model.model_name.replace('_', '-')[:truncate_model_name - len(pw_prefix)]}"
-      # )
       name = (
-          f"{pw_prefix}"
+          f"{pw_prefix}{wl_config.model.model_name.replace('_', '-')[:truncate_model_name - len(pw_prefix)]}"
       )
     else:
       name = (
