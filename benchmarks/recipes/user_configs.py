@@ -22,7 +22,8 @@ from xpk_configs import XpkClusterConfig
 from .. import maxtext_trillium_model_configs as v6e_model_configs
 from .. import maxtext_v5e_model_configs as v5e_model_configs
 from .. import maxtext_v5p_model_configs as v5p_model_configs
-from .pw_utils import build_user_models
+from .pw_utils import build_user_models, get_cluster_config, get_pathways_config
+
 
 AVAILABLE_MODELS_FRAMEWORKS = ["mcjax", "pathways"]
 
@@ -41,15 +42,21 @@ class UserConfig:
   project: str = 'cloud-tpu-cluster'
   zone: str = 'us-south1-a'
   device_type: str = 'v5litepod-32'
+  priority: str = 'medium'
 
   # Images for env
   server_image: str = 'us-docker.pkg.dev/cloud-tpu-v2-images/pathways/proxy_server'
   proxy_image: str = 'us-docker.pkg.dev/cloud-tpu-v2-images/pathways/server'
   runner: str = 'us-docker.pkg.dev/path/to/maxtext_runner'
   colocated_python_image: str = None
+  worker_flags: str = ''
+  proxy_flags: str = ''
+  server_flags: str = ''
+
 
   # model configuration
   benchmark_steps: int = 20
+  headless = False
   selected_model_framework: list[str] = dataclasses.field(default_factory=lambda: ["pathways", "mcjax"])
   selected_model_names: list[str] = dataclasses.field(default_factory=lambda: ["llama3_1_8b_8192"])
   num_slices_list: list[int] = dataclasses.field(default_factory=lambda: [2])
@@ -58,27 +65,10 @@ class UserConfig:
 
   def __post_init__(self):
     """Automatically generate derived attributes after the object is created."""
-    self.cluster_config = XpkClusterConfig(
-      cluster_name=self.cluster_name,
-      project=self.project,
-      zone=self.zone,
-      device_type=self.device_type,
-    )
+    self.cluster_config = get_cluster_config(self.cluster_name, self.project, self.zone,self.device_type)
     
     self.region = '-'.join(self.zone.split('-')[:-1])
-    self.headless = False
-
-    self.pathways_config = mxr.PathwaysConfig(
-      server_image=self.server_image,
-      proxy_server_image=self.proxy_image,
-      runner_image=self.runner,
-      colocated_python_sidecar_image=self.colocated_python_image,
-      headless=self.headless,
-
-      server_flags="",
-      proxy_flags="",
-      worker_flags="",
-    )
+    self.pathways_config = get_pathways_config(self.server_image, self.proxy_image, self.runner, self.colocated_python_image, self.headless, self.server_flags, self.proxy_flags, self.worker_flags)  
     self.headless_workload_name = f'{self.user[:3]}-headless'
     self.base_output_directory = f'gs://{self.user}-{self.region}/{self.user}-'
 
@@ -91,22 +81,21 @@ class UserConfig:
       AVAILABLE_MODELS
     )
 
-if __name__ == '__main__':
-  user_config = UserConfig(
-    user='lidanny',
-    cluster_name='bodaborg-v6e-256-lcscld-c',
-    project='tpu-prod-env-one-vm',
-    zone='southamerica-west1-a',
-    device_type='v6e-256',
-    benchmark_steps=20,
-    num_slices_list=[2],
-    server_image = 'us-docker.pkg.dev/cloud-tpu-v2-images-dev/pathways/unsanitized_server:latest',
-    proxy_image = 'us-docker.pkg.dev/cloud-tpu-v2-images-dev/pathways/unsanitized_proxy_server:latest',
-    runner='gcr.io/tpu-prod-env-one-vm/lidanny_latest',
-    selected_model_framework=['pathways', 'mcjax'],
-    selected_model_names=['llama3_1_8b_8192', "llama3_1_70b_8192"]
-  )
-  
-  # Access the generated attributes
-  for key, value in user_config.__dict__.items():
-    print(f'{key}: {value}')
+
+
+USER_CONFIG = UserConfig(
+  user='lidanny',
+  cluster_name='pw-scale-test-v5e-32',
+  project='cloud-tpu-multipod-dev',
+  zone='us-south1-a',
+  device_type='v5litepod-32',
+  benchmark_steps=20,
+  num_slices_list=[2],
+  server_image = 'us-docker.pkg.dev/cloud-tpu-v2-images-dev/pathways/unsanitized_server:latest',
+  proxy_image = 'us-docker.pkg.dev/cloud-tpu-v2-images-dev/pathways/unsanitized_proxy_server:latest',
+  runner='gcr.io/tpu-prod-env-one-vm/lidanny_latest',
+  selected_model_framework=['pathways'],
+  selected_model_names=['llama3_1_8b_8192_v5e_256'],
+  priority="medium"
+)
+

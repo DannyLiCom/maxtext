@@ -1,4 +1,5 @@
 import typing
+import maxtext_xpk_runner as mxr
 
 def build_user_models(
   selected_model_framework: typing.List[str],
@@ -54,3 +55,32 @@ def build_user_models(
       models[model_framework].append(available_models[device_base_type][model_name])
       
   return models
+
+def get_cluster_config(cluster_name, project, zone, device_type):
+  """
+  Generates Cluster configuration objects from a UserConfig.
+  """
+  cluster_config = mxr.XpkClusterConfig(
+      cluster_name=cluster_name,
+      project=project,
+      zone=zone,
+      device_type=device_type,
+  )
+
+  return cluster_config
+
+def get_pathways_config(server_image, proxy_image, runner, colocated_python_image, headless, server_flags="", proxy_flags="", worker_flags=""):
+  """
+  Generates Pathways configuration objects from a UserConfig.
+  """
+  pathways_config = mxr.PathwaysConfig(
+      server_image=server_image,
+      proxy_server_image=proxy_image,
+      runner_image=runner,
+      colocated_python_sidecar_image=colocated_python_image,
+      headless=headless,
+      server_flags=server_flags,
+      proxy_flags=proxy_flags,
+      worker_flags=worker_flags,
+  )
+  return pathways_config

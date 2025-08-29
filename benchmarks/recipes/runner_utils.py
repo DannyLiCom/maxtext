@@ -8,7 +8,7 @@ import maxtext_trillium_model_configs as model_configs
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def generate_and_run_workloads(user_config, num_slices_list, num_steps):
+def generate_and_run_workloads(user_config, num_slices_list, num_steps, priority="medium"):
   """
   Generates and executes XPK workloads based on the given configuration.
 
@@ -44,7 +44,7 @@ def generate_and_run_workloads(user_config, num_slices_list, num_steps):
             pathways_config=user_config.pathways_config if infra == "pathways" else None,
             xpk_path=user_config.xpk_path,
             num_steps=num_steps,
-            priority="medium",
+            priority=priority,
         )
 
         # Generate XPK command

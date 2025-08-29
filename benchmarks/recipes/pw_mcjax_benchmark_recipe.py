@@ -18,34 +18,20 @@ import sys
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(parent_dir)
 from . import args_helper as helper
-from .user_configs import UserConfig
+from . import user_configs
 from .runner_utils import generate_and_run_workloads
 
 def main() -> int:
   """Main program entry point"""
-  # Define user specific configurations for recipes here
-  user_config = UserConfig(
-      user='lidanny',
-      cluster_name='pw-scale-test-v5e-32',
-      project='cloud-tpu-multipod-dev',
-      zone='us-south1-a',
-      device_type='v5litepod-32',
-      benchmark_steps=20,
-      num_slices_list=[2],
-      server_image = 'us-docker.pkg.dev/cloud-tpu-v2-images-dev/pathways/unsanitized_server:latest',
-      proxy_image = 'us-docker.pkg.dev/cloud-tpu-v2-images-dev/pathways/unsanitized_proxy_server:latest',
-      runner='gcr.io/tpu-prod-env-one-vm/chzheng_latest:latest',
-      selected_model_framework=['pathways'],
-      selected_model_names=['llama3_1_8b_8192_v5e_256']
-  )
+  user_configs.USER_CONFIG.headless = False
   should_continue = helper.handle_cmd_args(
-      user_config.cluster_config, helper.DELETE, xpk_path=user_config.xpk_path
+      user_configs.USER_CONFIG.cluster_config, helper.DELETE, xpk_path=user_configs.USER_CONFIG.xpk_path
   )
 
   if not should_continue:
     return 0
 
-  generate_and_run_workloads(user_config, user_config.num_slices_list, user_config.benchmark_steps)
+  generate_and_run_workloads(user_configs.USER_CONFIG, user_configs.USER_CONFIG.num_slices_list, user_configs.USER_CONFIG.benchmark_steps, user_configs.USER_CONFIG.priority)
 
   return 0
 
