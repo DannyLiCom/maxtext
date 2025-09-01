@@ -21,41 +21,45 @@ def generate_and_run_workloads(user_config, num_slices_list, num_steps, priority
   xpk_workload_cmds = []
   xpk_workload_names = []
 
-  for infra, model_list in user_config.models.items():
+  for framework, model_list in user_config.models.items():
     if not model_list:
-      logging.info(f"Skipping empty model list for infrastructure: {infra}")
+      logging.info(f"Skipping empty model list for infrastructure: {framework}")
       continue
 
     for model in model_list:
-      for num_slices in num_slices_list:
-        # Create a WorkloadConfig object
-        wl_config = mxr.WorkloadConfig(
-            model=model,
-            num_slices=num_slices,
-            device_type=user_config.cluster_config.device_type,
-            base_output_directory=(
-                f"{user_config.base_output_directory}{infra}_{num_slices}_slice_"
-                f"{user_config.device_type}_{model.model_name}/"
-            ),                    
-            max_restarts=0,
-            libtpu_type=None,
-            libtpu_nightly_version="",
-            base_docker_image=user_config.runner if infra == "mcjax" else None,
-            pathways_config=user_config.pathways_config if infra == "pathways" else None,
-            xpk_path=user_config.xpk_path,
-            num_steps=num_steps,
-            priority=priority,
-        )
+      # Run workloads on the below clusters
+      for user_config.cluster_config in [
+          user_config.cluster_config,
+      ]:
+        for num_slices in num_slices_list:
+          # Create a WorkloadConfig object
+          wl_config = mxr.WorkloadConfig(
+              model=model,
+              num_slices=num_slices,
+              device_type=user_config.cluster_config.device_type,
+              base_output_directory=(
+                  f"{user_config.base_output_directory}{framework}_{num_slices}_slice_"
+                  f"{user_config.device_type}_{model.model_name}/"
+              ),                    
+              max_restarts=0,
+              libtpu_type=None,
+              libtpu_nightly_version="",
+              base_docker_image=user_config.runner if framework == "mcjax" else None,
+              pathways_config=user_config.pathways_config if framework == "pathways" else None,
+              xpk_path=user_config.xpk_path,
+              num_steps=num_steps,
+              priority=priority,
+          )
 
-        # Generate XPK command
-        command, name = mxr.generate_xpk_workload_cmd(
-            cluster_config=user_config.cluster_config, wl_config=wl_config
-        )
+          # Generate XPK command
+          command, name = mxr.generate_xpk_workload_cmd(
+              cluster_config=user_config.cluster_config, wl_config=wl_config
+          )
 
-        logging.info(f"Generated workload: {name}")
-        logging.info(f"Generated command: {command}")
-        xpk_workload_names.append(name)
-        xpk_workload_cmds.append(command)
+          logging.info(f"Generated workload: {name}")
+          logging.info(f"Generated command: {command}")
+          xpk_workload_names.append(name)
+          xpk_workload_cmds.append(command)
 
   # Execute all generated workloads
   for xpk_workload_name, xpk_workload_cmd in zip(xpk_workload_names, xpk_workload_cmds):
