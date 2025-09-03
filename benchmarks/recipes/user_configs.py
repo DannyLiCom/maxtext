@@ -56,16 +56,20 @@ class UserConfig:
 
   # model configuration
   benchmark_steps: int = 20
-  headless = False
+  headless: bool = False
   selected_model_framework: list[str] = dataclasses.field(default_factory=lambda: ["pathways", "mcjax"])
-  selected_model_names: list[str] = dataclasses.field(default_factory=lambda: ["llama3_1_8b_8192"])
+  selected_model_names: list[str] = dataclasses.field(default_factory=lambda: ["llama3_1_8b_8192_v5e_256"])
   num_slices_list: list[int] = dataclasses.field(default_factory=lambda: [2])
   
+  # Other configuration
   xpk_path: str = '~/xpk'
+  delete: bool = False
+  max_restarts: int = 0
+
 
   def __post_init__(self):
     """Automatically generate derived attributes after the object is created."""
-    self.cluster_config = get_cluster_config(self.cluster_name, self.project, self.zone,self.device_type)
+    self.cluster_config = get_cluster_config(self.cluster_name, self.project, self.zone, self.device_type)
     
     self.region = '-'.join(self.zone.split('-')[:-1])
     self.pathways_config = get_pathways_config(self.server_image, self.proxy_image, self.runner, self.colocated_python_image, self.headless, self.server_flags, self.proxy_flags, self.worker_flags)  
@@ -82,9 +86,9 @@ class UserConfig:
     )
 
 
-
+# Temporarily commented out, as this affects the parser's value passing.
 USER_CONFIG = UserConfig(
-  user='lidanny',
+  user='jejklafnd',
   cluster_name='pw-scale-test-v5e-32',
   project='cloud-tpu-multipod-dev',
   zone='us-south1-a',

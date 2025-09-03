@@ -20,7 +20,7 @@ def generate_and_run_workloads(user_config, num_slices_list, num_steps, priority
   """
   xpk_workload_cmds = []
   xpk_workload_names = []
-
+  
   for framework, model_list in user_config.models.items():
     if not model_list:
       logging.info(f"Skipping empty model list for infrastructure: {framework}")
@@ -41,7 +41,7 @@ def generate_and_run_workloads(user_config, num_slices_list, num_steps, priority
                   f"{user_config.base_output_directory}{framework}_{num_slices}_slice_"
                   f"{user_config.device_type}_{model.model_name}/"
               ),                    
-              max_restarts=0,
+              max_restarts=user_config.max_restarts,
               libtpu_type=None,
               libtpu_nightly_version="",
               base_docker_image=user_config.runner if framework == "mcjax" else None,
@@ -53,7 +53,7 @@ def generate_and_run_workloads(user_config, num_slices_list, num_steps, priority
 
           # Generate XPK command
           command, name = mxr.generate_xpk_workload_cmd(
-              cluster_config=user_config.cluster_config, wl_config=wl_config
+              cluster_config=user_config.cluster_config, wl_config=wl_config, user_config=user_config
           )
 
           logging.info(f"Generated workload: {name}")
