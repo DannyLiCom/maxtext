@@ -41,7 +41,7 @@ def generate_and_run_workloads(user_config, num_slices_list, num_steps, priority
                   f"{user_config.base_output_directory}{framework}_{num_slices}_slice_"
                   f"{user_config.device_type}_{model.model_name}/"
               ),                    
-              max_restarts=0,
+              max_restarts=user_config.max_restarts,
               libtpu_type=None,
               libtpu_nightly_version="",
               base_docker_image=user_config.runner if framework == "mcjax" else None,

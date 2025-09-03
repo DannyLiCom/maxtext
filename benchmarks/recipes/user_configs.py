@@ -62,6 +62,7 @@ class UserConfig:
   num_slices_list: list[int] = dataclasses.field(default_factory=lambda: [2])
   
   xpk_path: str = '~/xpk'
+  max_restarts: int = 0
 
   def __post_init__(self):
     """Automatically generate derived attributes after the object is created."""
