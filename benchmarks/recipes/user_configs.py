@@ -38,10 +38,10 @@ class UserConfig:
   """The default configuration can be modified here."""
   # gcp configuration
   user: str = 'user_name'
-  cluster_name: str = 'test-v5e-32-cluster'
-  project: str = 'cloud-tpu-cluster'
-  zone: str = 'us-south1-a'
-  device_type: str = 'v5litepod-32'
+  cluster_name: str = 'v6e-256-cluster'
+  project: str = 'tpu-prod-env-cluster'
+  zone: str = 'us-east5-b'
+  device_type: str = 'v6e-256'
   priority: str = 'medium'
 
   # Images for env
@@ -56,11 +56,12 @@ class UserConfig:
 
   # model configuration
   benchmark_steps: int = 20
-  headless = False
-  selected_model_framework: list[str] = dataclasses.field(default_factory=lambda: ["pathways", "mcjax"])
+  headless: bool = False
+  selected_model_framework: list[str] = dataclasses.field(default_factory=lambda: ["pathways"]) #pathways, mcjax
   selected_model_names: list[str] = dataclasses.field(default_factory=lambda: ["llama3_1_8b_8192"])
   num_slices_list: list[int] = dataclasses.field(default_factory=lambda: [2])
   
+  # other configuration
   xpk_path: str = '~/xpk'
   max_restarts: int = 0
 
@@ -83,20 +84,20 @@ class UserConfig:
     )
 
 
-
+# Define the required configuration here
 USER_CONFIG = UserConfig(
-  user='lidanny',
-  cluster_name='pw-scale-test-v5e-32',
-  project='cloud-tpu-multipod-dev',
-  zone='us-south1-a',
-  device_type='v5litepod-32',
+  user='user_name',
+  cluster_name='v6e-256-cluster',
+  project='tpu-prod-env-cluster',
+  zone='us-east5-b',
+  device_type='v6e-256',
   benchmark_steps=20,
   num_slices_list=[2],
-  server_image = 'us-docker.pkg.dev/cloud-tpu-v2-images-dev/pathways/unsanitized_server:latest',
-  proxy_image = 'us-docker.pkg.dev/cloud-tpu-v2-images-dev/pathways/unsanitized_proxy_server:latest',
-  runner='gcr.io/tpu-prod-env-one-vm/chzheng_latest:latest',
+  server_image = 'us-docker.pkg.dev/cloud-tpu-v2-images/pathways/proxy_server',
+  proxy_image = 'us-docker.pkg.dev/cloud-tpu-v2-images/pathways/server',
+  runner='us-docker.pkg.dev/path/to/maxtext_runner',
   selected_model_framework=['pathways'],
-  selected_model_names=['llama3_1_8b_8192_v5e_256'],
+  selected_model_names=['llama3_1_8b_8192'],
   priority="medium"
 )
 
