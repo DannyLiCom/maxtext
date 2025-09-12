@@ -31,9 +31,9 @@ def main() -> int:
   if not should_continue:
     return 0
 
-  generate_and_run_workloads(user_configs.USER_CONFIG, user_configs.USER_CONFIG.num_slices_list, user_configs.USER_CONFIG.benchmark_steps, user_configs.USER_CONFIG.priority)
+  return_code = generate_and_run_workloads(user_configs.USER_CONFIG, user_configs.USER_CONFIG.num_slices_list, user_configs.USER_CONFIG.benchmark_steps, user_configs.USER_CONFIG.priority)
 
-  return 0
+  return return_code
 
 
 if __name__ == "__main__":

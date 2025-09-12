@@ -2,8 +2,9 @@
 
 import datetime
 import logging
-import maxtext_xpk_runner as mxr
+from .. import maxtext_xpk_runner as mxr
 import maxtext_trillium_model_configs as model_configs
+import sys
 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -67,4 +68,7 @@ def generate_and_run_workloads(user_config, num_slices_list, num_steps, priority
     logging.info(f"[{timestamp}] Running workload: {xpk_workload_name}")
     return_code = mxr.run_command_with_updates(xpk_workload_cmd, xpk_workload_name)
     if return_code != 0:
-      logging.error(f"Failed to run xpk workload: {xpk_workload_name}. Return code: {return_code}")
+      logging.error(f"Failed to run xpk workload: {xpk_workload_name}.")
+      sys.exit(return_code)
+  return 0
+
